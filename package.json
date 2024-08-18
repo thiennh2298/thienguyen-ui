@@ -1,0 +1,27 @@
+{
+  "name": "thienguyen-ui",
+  "version": "1.0.0",
+  "description": "The ui library is built by Thien Nguyen",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thiennh2298/thienguyen-ui.git"
+  },
+  "keywords": [
+    "UI",
+    "Library",
+    "Reactjs",
+    "Reactjs",
+    "UI",
+    "Library"
+  ],
+  "author": "Thien Nguyen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thiennh2298/thienguyen-ui/issues"
+  },
+  "homepage": "https://github.com/thiennh2298/thienguyen-ui#readme"
+}
