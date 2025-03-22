@@ -22,7 +22,7 @@ const ReloadIcon = ({ className }: IconProps) => (
 );
 
 export type WithLoadingProps<P> = P & {
-  isLoading: boolean;
+  isLoading?: boolean;
 };
 
 export const withLoading = <P extends object = typeof BaseButton>(
