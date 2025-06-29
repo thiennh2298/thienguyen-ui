@@ -28,7 +28,7 @@ export const supportRef = (element: any): boolean => {
   return false;
 };
 
-function useComposeRef<T>(...refs: (React.Ref<T> | undefined)[]) {
+export function useComposeRef<T>(...refs: (React.Ref<T> | undefined)[]) {
   return useCallback(
     (node: T | null) => {
       refs.forEach((ref) => {
@@ -42,5 +42,3 @@ function useComposeRef<T>(...refs: (React.Ref<T> | undefined)[]) {
     [refs]
   );
 }
-
-export default useComposeRef;

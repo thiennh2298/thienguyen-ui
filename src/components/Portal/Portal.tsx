@@ -1,39 +1,19 @@
 import {
   ReactNode,
-  forwardRef,
-  cloneElement,
-  isValidElement,
-  RefObject,
   useEffect,
   useState,
+  isValidElement,
+  RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import useComposeRef, { supportRef } from "../../hooks/useComposeRef";
-import { useMounted } from "../../hooks/useMounted";
-import { mcn } from "../../utils/mcn";
 
 type ContainerType = Element | DocumentFragment;
 type ElementWithRef = React.ReactElement & { ref?: RefObject<Element> };
 
-type Position = {
-  top?: number;
-  left?: number;
-  bottom?: number;
-  right?: number;
-};
-
-export interface PortalProps {
-  container?: ReactNode | HTMLElement;
+interface PortalProps {
   children: ReactNode;
+  container?: ReactNode | HTMLElement;
   open?: boolean;
-  position?: Position;
-  zIndex?: number;
-  onClickOutside?: () => void;
-  className?: string;
-  animation?: {
-    enter: string;
-    exit: string;
-  };
 }
 
 const getPortalContainer = (
@@ -51,82 +31,16 @@ const getPortalContainer = (
   return document.body;
 };
 
-export const Portal = forwardRef<Element, PortalProps>((props, ref) => {
-  const {
-    children,
-    container,
-    open,
-    position,
-    zIndex = 1000,
-    onClickOutside,
-    className = "",
-    animation,
-  } = props;
-
-  const mounted = useMounted();
-  const [isAnimating, setIsAnimating] = useState(false);
+export const Portal = ({ children, container, open = true }: PortalProps) => {
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!mounted || !onClickOutside) return;
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
-    const handleClickOutside = (event: MouseEvent) => {
-      const portalElement = getPortalContainer(container);
-      if (portalElement && !portalElement.contains(event.target as Node)) {
-        onClickOutside();
-      }
-    };
+  if (!mounted || !open) return null;
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [container, mounted, onClickOutside]);
-
-  useEffect(() => {
-    if (animation) {
-      setIsAnimating(true);
-      const timer = setTimeout(() => setIsAnimating(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [open, animation]);
-
-  if (!mounted || !open) {
-    return null;
-  }
-
-  const mergedRef = supportRef(children)
-    ? useComposeRef(ref, (children as any).ref)
-    : undefined;
-
-  let reffedChildren = children;
-  if (ref) {
-    reffedChildren = cloneElement(children as any, {
-      ref: mergedRef,
-    });
-  }
-
-  const portalContent = (
-    <div
-      style={{
-        position: "fixed",
-        ...position,
-        zIndex,
-        willChange: "transform",
-        backfaceVisibility: "hidden",
-      }}
-      className={mcn(
-        "portal-wrapper",
-        "transform-gpu",
-        className,
-        animation && {
-          [animation.enter]: open && isAnimating,
-          [animation.exit]: !open,
-        }
-      )}
-    >
-      {reffedChildren}
-    </div>
-  );
-
-  return createPortal(portalContent, getPortalContainer(container));
-});
-
-Portal.displayName = "Portal";
+  const portalContainer = getPortalContainer(container);
+  return createPortal(children, portalContainer);
+};

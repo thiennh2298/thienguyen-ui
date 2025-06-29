@@ -1,139 +1,144 @@
 import {
   forwardRef,
+  MouseEventHandler,
   ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { Portal } from "../Portal";
 import { mcn } from "../../utils/mcn";
-import { usePopover } from "./Popover";
+import { DEFAULT_ARROW_HEIGHT, PopoverArrow } from "./PopoverArrow";
+import { usePopover, usePopoverDispatch } from "./PopoverContext";
+import { useComposeRef } from "../../hooks/useComposeRef";
 
 export interface PopoverContentProps extends React.PropsWithChildren {
   className?: string;
   title?: ReactNode;
-  footer?: ReactNode;
 }
 
 const popoverBaseClasses =
-  "bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px] max-w-sm";
+  "bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px] max-w-sm pointer-events-auto";
 
 export const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
   (props, ref) => {
-    const { children, className = "", title, footer } = props;
-    const { isVisible, setIsVisible, triggerRef, placement, offset } =
-      usePopover();
-    const popoverRef = useRef<HTMLDivElement>(null);
+    const { children, className = "", title } = props;
+    const {
+      isVisible,
+      showArrow,
+      triggerRef,
+      arrowRef,
+      popoverRef,
+      placement,
+      offset,
+    } = usePopover();
+    const { setIsVisible } = usePopoverDispatch();
+    const mergedPopoverRef = useComposeRef(ref, popoverRef);
+
     const [position, setPosition] = useState({ top: 0, left: 0 });
 
     const calculatePosition = useCallback(() => {
-      if (!triggerRef.current || !popoverRef.current) return;
+      if (!triggerRef.current || !popoverRef.current) {
+        return;
+      }
 
       const triggerRect = triggerRef.current.getBoundingClientRect();
       const popoverRect = popoverRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
 
-      let newPlacement = placement;
+      const totalOffset = offset + (showArrow ? DEFAULT_ARROW_HEIGHT : 0);
       let top = 0;
-      const left =
-        triggerRect.left + (triggerRect.width - popoverRect.width) / 2;
+      let left = triggerRect.left + (triggerRect.width - popoverRect.width) / 2;
 
       if (placement === "bottom") {
-        top = triggerRect.bottom + offset;
+        top = triggerRect.bottom + totalOffset;
         if (top + popoverRect.height > viewportHeight) {
-          newPlacement = "top";
-          top = triggerRect.top - popoverRect.height - offset;
+          top = triggerRect.top - popoverRect.height - totalOffset;
+        }
+      } else {
+        top = triggerRect.top - popoverRect.height - totalOffset;
+        if (top < 0) {
+          top = triggerRect.bottom + totalOffset;
         }
       }
 
-      if (placement === "top") {
-        top = triggerRect.top - popoverRect.height - offset;
-        if (top < 0) {
-          newPlacement = "bottom";
-          top = triggerRect.bottom + offset;
-        }
+      // Ensure popover stays within viewport
+      if (left < 0) left = 0;
+      if (left + popoverRect.width > viewportWidth) {
+        left = viewportWidth - popoverRect.width;
       }
 
       setPosition({ top, left });
-    }, [placement, offset]);
+    }, [placement, offset, showArrow]);
 
-    const handleClickOutside = useCallback((event: MouseEvent) => {
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(event.target as Node) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(event.target as Node)
-      ) {
-        setIsVisible(false);
+    useLayoutEffect(() => {
+      if (isVisible && popoverRef.current) {
+        calculatePosition();
       }
-    }, []);
+    }, [isVisible, calculatePosition, popoverRef]);
 
     useEffect(() => {
-      if (isVisible) {
-        calculatePosition();
-        document.addEventListener("mousedown", handleClickOutside);
-        window.addEventListener("resize", calculatePosition);
-        window.addEventListener("scroll", calculatePosition);
+      if (!isVisible) return;
+      window.addEventListener("resize", calculatePosition);
+      window.addEventListener("scroll", calculatePosition);
 
-        return () => {
-          document.removeEventListener("mousedown", handleClickOutside);
-          window.removeEventListener("resize", calculatePosition);
-          window.removeEventListener("scroll", calculatePosition);
-        };
-      }
-    }, [isVisible, calculatePosition, handleClickOutside]);
+      return () => {
+        window.removeEventListener("resize", calculatePosition);
+        window.removeEventListener("scroll", calculatePosition);
+      };
+    }, [isVisible, calculatePosition]);
 
-    if (!isVisible) return null;
-
-    return (
-      <Portal
-        open={isVisible}
-        position={position}
-        className={mcn("absolute", className)}
+    const content = (
+      <div
+        role="dialog"
+        ref={mergedPopoverRef}
+        className={mcn(popoverBaseClasses, "transform-gpu", className)}
+        style={{
+          opacity: isVisible ? 1 : 0,
+          transition: "opacity 0.2s ease-in-out",
+          pointerEvents: isVisible ? "auto" : "none",
+          position: "fixed",
+          top: position.top,
+          left: position.left,
+          zIndex: 50,
+        }}
       >
-        <div
-          ref={popoverRef}
-          className={mcn(
-            popoverBaseClasses,
-            "transform-gpu relative",
-            isVisible ? "visible" : "invisible"
-          )}
-        >
-          {title && (
-            <div className="px-4 py-3 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="font-medium">{title}</div>
-                <button
-                  onClick={() => setIsVisible(false)}
-                  className="text-gray-400 hover:text-gray-500"
+        {title && (
+          <div className="px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">{title}</div>
+              <button
+                onClick={() => setIsVisible(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
-          )}
-          <div className="p-4">{children}</div>
-          {footer && (
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-b-lg">
-              {footer}
-            </div>
-          )}
-        </div>
-      </Portal>
+          </div>
+        )}
+        {showArrow && (
+          <PopoverArrow ref={arrowRef} placement={placement} offset={offset} />
+        )}
+        <div className="p-4">{children}</div>
+      </div>
     );
+
+    return <Portal open={isVisible}>{content}</Portal>;
   }
 );
 

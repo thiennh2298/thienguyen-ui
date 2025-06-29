@@ -1,4 +1,4 @@
-# @thienguyen-ui
+# thienguyen-ui
 
 `https://www.npmjs.com/package/thienguyen-ui`
 
